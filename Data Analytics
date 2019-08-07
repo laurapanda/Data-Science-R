@@ -1,0 +1,88 @@
+# Libraries
+library(readr)
+library(plotly)
+library(rpart)
+library(rpart.plot)
+
+# 1. Data Exploration 
+
+#Importing Data
+census <- read_csv("~/Dropbox/Hult/Module B/R/Datasets/census_income.csv")
+View(census)
+summary(census)
+
+# 2. Data Massaging
+
+# converting character into binary
+census$binary <- census$X15
+typeof(census$binary)
+for (i in 1:nrow(census)){
+  if (census$binary[i]=='<=50K'){census$binary[i]<- "0"}
+  else(census$binary[i]<- "1")
+}
+census$binary <- as.numeric(census$binary)
+
+
+for (i in 1:nrow(census)){
+  if (census$sex[i]=='Male'){census$sex[i]<- "1"}
+  else(census$sex[i]<- "0")
+}
+census$sex <- as.numeric(census$sex)
+
+summary(census)
+
+typeof(census$age)
+is.numeric(census$binary)
+
+# 3. Predicting
+
+# Logistic Regression
+census_logit <- glm(binary ~ age + sex + hours_per_week, data=census, family=binomial())
+summary(census_logit)
+
+exp(census_logit$coefficients)
+exp(census_logit$coefficients)-1
+
+logit2prob <- function(x, coeff, intrcpt){
+  logit <- intrcpt+ x*coeff
+  odds <-  exp(logit) # a one -unit change of x increases the odds by ...
+  prob <- odds / (1+odds)
+  return(c(odds,prob))
+}
+# if I'm 20 years old, what are the probabilities of me having a high income (binary=1) ?
+logit2prob(x=20, coeff=0.042276, intrcpt =-5.383749 )
+# --> 10.6% probability of having a high income
+
+# odds
+exp(0.042276)-1
+# A one unit increase in age increases the odds of having a higher income by 4.3%
+
+# predicting the probability of lower income
+predict_clogit <- predict(census_logit, census, type="response")
+print(predict_clogit)
+
+
+
+# Decision Tree
+census_tree <- rpart(binary ~ age + sex + hours_per_week, data=census, method='class', cp=0.016)
+rpart.plot(census_tree, type=1, extra=1)
+plotcp(census_tree)
+
+
+
+# 4. Data Visualization
+
+# creating histograms with a for loop
+for (i in 1:ncol(census)) {
+  my_col <- census[,i]
+  colnames(my_col) <- (c('column'))
+  if(is.numeric(my_col$column) == TRUE) {
+    c <- plot_ly(x=my_col$column, type='histogram') %>% layout(xaxis= list(title=colnames(census)[i]))
+    print(c)
+    # hist(my_col, main = colnames(census)[i]) --> doesn't work
+  }
+  else {
+    print("This column is not numeric, additional analysis is needed:")
+    print(colnames(census)[i])
+  }
+}
