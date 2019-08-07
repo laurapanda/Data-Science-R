@@ -1,0 +1,58 @@
+#
+# This is the server logic of a Shiny web application. You can run the 
+# application by clicking 'Run App' above.
+#
+# Find out more about building applications with Shiny here:
+# 
+#    http://shiny.rstudio.com/
+#
+library(shiny)
+# Define server logic required to draw a histogram
+shinyServer(function(input, output) {
+  output$distPlot <- renderPlot({
+    library(readr)
+    library(rpart)
+    library(rpart.plot)
+    census <- read_csv("~/Dropbox/Hult/Module B/R/Datasets/census_income.csv")
+    census$binary <- census$X15
+    for (i in 1:nrow(census)){
+      if (census$binary[i]=='<=50K'){census$binary[i]<- "0"}
+      else(census$binary[i]<- "1")
+    }
+    census$binary <- as.numeric(census$binary)
+    for (i in 1:nrow(census)){
+      if (census$sex[i]=='Male'){census$sex[i]<- "1"}
+      else(census$sex[i]<- "0")
+    }
+    census$sex <- as.numeric(census$sex)
+    census_tree <- rpart(binary ~ age + sex + hours_per_week, data=census, method='class', cp=input$cp)
+    rpart.plot(census_tree, type=1, extra=1)
+  })
+  #
+# This is the user-interface definition of a Shiny web application. You can
+# run the application by clicking 'Run App' above.
+#
+# Find out more about building applications with Shiny here:
+# 
+#    http://shiny.rstudio.com/
+#
+library(shiny)
+# Define UI for application that draws a histogram
+shinyUI(fluidPage(
+  # Application title
+  titlePanel("Census Dataset"),
+  # Sidebar with a slider input for number of bins 
+  sidebarLayout(
+    sidebarPanel(
+       sliderInput("cp",
+                   "Select the right cp value:",
+                   min = 0.001,
+                   max = 0.025,
+                   value = 0.016)
+    ),
+    # Show a plot of the generated distribution
+    mainPanel(
+       plotOutput("distPlot")
+    )
+  )
+))
